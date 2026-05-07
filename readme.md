@@ -65,9 +65,10 @@ graph TD
     style Input_Processing fill:#f9f9f9,stroke:#333,stroke-width:2px
     style Fusion_Layer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     style Output_Telemetry fill:#fff3e0,stroke:#e65100,stroke-width:2px
+```
 ---
 
-## 📊 Performance & Specifications
+##  Performance & Specifications
 
 | Dimension | Metric / Technology |
 | :--- | :--- |
@@ -79,7 +80,7 @@ graph TD
 
 ---
 
-## 📂 Project Directory Structure
+##  Project Directory Structure
 
 ```text
 monocular/
@@ -92,7 +93,7 @@ monocular/
 └── README.md                              # System documentation
 
 
-🚀 Installation & Local Execution
+ Installation & Local Execution
 1. Environment Setup
 Bash
 # Clone the repository
