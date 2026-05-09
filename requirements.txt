@@ -1,11 +1,8 @@
-audioop-lts
-huggingface_hub==0.25.2
-torch==2.4.1
-numpy<2
-Pillow
-opencv-python-headless
-onnxruntime
+torch
+torchvision
 transformers
-accelerate
 ultralytics
-gradio==4.44.1
+opencv-python-headless
+gradio
+numpy==1.26.4
+Pillow

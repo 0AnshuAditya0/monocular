@@ -16,6 +16,17 @@ depth_model = depth_model.to(device).eval()
 yolo = YOLO("yolov8n.pt")
 print("Models loaded")
 
+ema_depth = None
+EMA_ALPHA = 0.4
+
+def apply_clahe(frame):
+    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l = clahe.apply(l)
+    lab = cv2.merge([l, a, b])
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
 def make_bev(depth_raw, boxes_with_risk, bev_size=300):
     bev = np.zeros((bev_size, bev_size, 3), dtype=np.uint8)
     for i in range(0, bev_size, bev_size // 5):
@@ -45,6 +56,7 @@ def process_frame(image):
         return None, None, None, "—", "—"
 
     frame = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    frame = apply_clahe(frame)
     h, w = frame.shape[:2]
 
     with torch.no_grad():
@@ -53,7 +65,14 @@ def process_frame(image):
         outputs = depth_model(**inputs)
         depth_raw = outputs.predicted_depth.squeeze().cpu().numpy()
 
+    global ema_depth
     depth_raw_resized = cv2.resize(depth_raw, (w, h))
+    if ema_depth is None or ema_depth.shape != depth_raw_resized.shape:
+        ema_depth = depth_raw_resized
+    else:
+        ema_depth = EMA_ALPHA * depth_raw_resized + (1 - EMA_ALPHA) * ema_depth
+    depth_raw_resized = ema_depth
+
     close_thresh = float(np.percentile(depth_raw_resized, 70))
     far_thresh   = float(np.percentile(depth_raw_resized, 40))
 
