@@ -114,8 +114,8 @@ Depth ordering accuracy evaluated on **NYU Depth V2** (n=100 test images, zero-s
 
 ```
 monocular/
-├── app.py                  # Gradio web app (HuggingFace Spaces)
-├── depth.py                # Local video inference + BEV pipeline
+├── app.py                 
+├── depth.py                
 ├── requirements.txt
 └── README.md
 ```
@@ -152,9 +152,3 @@ Upload any street, traffic, or indoor image. The system assigns DANGER / WARNING
 - **ViT quantization** — dynamic INT8 degrades performance; static quantization with calibration needed for edge deployment
 
 ---
-
-## Author
-
-**Anshu Aditya** — OpenCV Contributor (5 merged PRs across imgproc, SIMD, Python bindings, VideoIO, HighGUI)
-
-[GitHub](https://github.com/0AnshuAditya0) · [LinkedIn](https://linkedin.com/in/anshu-aditya) · [OpenCV PRs](https://github.com/opencv/opencv/pulls?q=author%3A0AnshuAditya0)
