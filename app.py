@@ -31,14 +31,18 @@ def make_bev(depth_raw, boxes_with_risk, bev_size=300):
         bev_y = int((1.0 - depth_norm) * (bev_size - 40)) + 10
         cv2.circle(bev, (bev_x, bev_y), 8, color, -1)
         cv2.putText(bev, label[:3], (bev_x + 10, bev_y + 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
     cv2.putText(bev, "BEV MAP", (5, 15),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1)
+    cv2.putText(bev, "NEAR", (5, bev_size - 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (100, 100, 100), 1)
+    cv2.putText(bev, "FAR", (5, 25),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (100, 100, 100), 1)
     return bev
 
 def process_frame(image):
     if image is None:
-        return None, None, None
+        return None, None, None, "—", "—"
 
     frame = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
     h, w = frame.shape[:2]
@@ -91,39 +95,66 @@ def process_frame(image):
                     (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
         boxes_with_risk.append((cx, depth_val, color, label))
 
-    cv2.putText(annotated, f"Objects: {obj_count}  Hazards: {danger_count}",
-                (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-
     bev = make_bev(depth_raw_resized, boxes_with_risk, bev_size=300)
 
-    annotated_rgb    = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
-    depth_rgb        = cv2.cvtColor(depth_colored, cv2.COLOR_BGR2RGB)
-    bev_rgb          = cv2.cvtColor(bev, cv2.COLOR_BGR2RGB)
+    annotated_rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
+    depth_rgb     = cv2.cvtColor(depth_colored, cv2.COLOR_BGR2RGB)
+    bev_rgb       = cv2.cvtColor(bev, cv2.COLOR_BGR2RGB)
 
-    return annotated_rgb, depth_rgb, bev_rgb
+    return annotated_rgb, depth_rgb, bev_rgb, str(obj_count), str(danger_count)
 
-with gr.Blocks(title="DepthGuard") as demo:
-    gr.Markdown("# DepthGuard — Monocular Depth-Aware Collision Risk Detection")
-    gr.Markdown("Upload an image or use webcam. Each object is labeled DANGER / WARNING / SAFE based on estimated depth.")
+
+with gr.Blocks(title="Monocular Depth Risk Detection", theme=gr.themes.Monochrome()) as demo:
+
+    gr.Markdown("""
+    # Monocular Depth Risk Detection
+    **Real-time collision risk assessment from a single RGB camera — no LiDAR, no stereo rig.**
+    
+    Upload any street/traffic image. Each detected object is labeled:
+    🔴 **DANGER** — closest objects &nbsp;&nbsp; 🟠 **WARNING** — mid-range &nbsp;&nbsp; 🟢 **SAFE** — far objects
+    """)
 
     with gr.Row():
-        input_image = gr.Image(label="Input", sources=["webcam", "upload"], streaming=False)
+        input_image = gr.Image(
+            label="📷 Input Image / Webcam",
+            sources=["upload", "webcam"],
+            type="numpy",
+            height=340
+        )
 
     with gr.Row():
-        out_detection = gr.Image(label="Detection + Risk")
-        out_depth     = gr.Image(label="Depth Map")
-        out_bev       = gr.Image(label="Bird's Eye View")
+        btn = gr.Button("▶ Analyze", variant="primary", scale=1)
 
-    input_image.change(
-        fn=process_frame,
-        inputs=input_image,
-        outputs=[out_detection, out_depth, out_bev]
-    )
+    with gr.Row():
+        stat_objects = gr.Textbox(label="🎯 Objects Detected", interactive=False)
+        stat_hazards = gr.Textbox(label="⚠️ Hazards (DANGER)", interactive=False)
+
+    gr.Markdown("### Output")
+    with gr.Row():
+        out_detection = gr.Image(label="Detection + Risk Labels", height=300)
+        out_depth     = gr.Image(label="Depth Map (INFERNO)", height=300)
+        out_bev       = gr.Image(label="Bird's Eye View", height=300)
+
+    gr.Markdown("""
+    ---
+    **How it works:** Depth Anything V2 estimates per-pixel relative depth from a single image.
+    YOLOv8n detects objects. For each bounding box, the median depth of the center 50% crop is sampled
+    and compared against dynamic per-frame percentile thresholds to assign a risk tier.
+    The BEV map plots each object's horizontal position vs estimated depth.
+    
+    **Stack:** Depth Anything V2 · YOLOv8n · OpenCV · Gradio
+    """)
 
     gr.Examples(
-        examples=[["sample12.png"]],
-        inputs=input_image
+        examples=[["sample.jpg"]],
+        inputs=input_image,
+        label="Try this example"
+    )
+
+    btn.click(
+        fn=process_frame,
+        inputs=input_image,
+        outputs=[out_detection, out_depth, out_bev, stat_objects, stat_hazards]
     )
 
 demo.launch()
-
